@@ -1,0 +1,108 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana
+  namespace: argo-cd
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    targetRevision: 6.59.4
+    chart: grafana
+    helm:
+      values: |-
+        admin:
+          existingSecret: "grafana-secret"
+          userKey: admin-user
+          passwordKey: admin-password
+        datasources:
+          datasources.yaml:
+            apiVersion: 1
+            datasources:
+              - name: Prometheus
+                type: prometheus
+                access: proxy
+                url: http://prometheus-server.monitoring.svc.cluster.local
+                isDefault: true
+              - name: Loki
+                type: loki
+                access: proxy
+                url: http://loki.monitoring.svc.cluster.local:3100
+                jsonData:
+                      timeout: 60
+                      maxLines: 1000
+        dashboardProviders:
+          dashboardproviders.yaml:
+            apiVersion: 1
+            providers:
+            - name: 'default'
+              orgId: 1
+              folder: ''
+              type: file
+              disableDeletion: false
+              editable: true
+              options:
+                path: /var/lib/grafana/dashboards/default         
+        dashboards:
+          default:
+            prometheus-stats:
+              gnetId: 2
+              revision: 2
+              datasource: Prometheus
+            node-exporter-full:
+              gnetId: 1860
+              revision: 32
+              datasource: Prometheus
+            kubernetes-cluster-monitoring:
+              gnetId: 10000
+              datasource: Prometheus
+
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated: {}
+---
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: fake-secret-store
+  namespace: monitoring
+spec:
+  provider:
+    fake:
+      data:
+      - key: "user"
+        value: "admin"
+      - key: "password"
+        value: "letmein"
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: grafana-secret
+  namespace: monitoring
+spec:
+  refreshInterval: "10s"
+  secretStoreRef:
+    name: fake-secret-store
+    kind: SecretStore
+  target:
+    name: "grafana-secret"
+    template:
+      engineVersion: v2
+      templateFrom:
+      - target: Data
+        literal: |
+          {{ range $key, $value := . }}
+          admin-{{$key}}: {{$value}}
+          {{ end }}
+  data:
+  - secretKey: user
+    remoteRef:
+      key: user
+  - secretKey: password
+    remoteRef:
+      key: password
