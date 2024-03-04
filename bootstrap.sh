@@ -45,23 +45,29 @@ then
     echo "Cluster is running"
 else
     echo "Cluster is not running"
+    exit 1
 fi
 
-# Install argocd into namespace argo-cd
+# Check if argocd is installed in k8s cluster
+if kubectl get ns | grep -q "argo-cd"
+then
+    echo "ArgoCD is already installed"
+else
+    helm repo add argo https://argoproj.github.io/argo-helm
+    helm repo update argo
+    helm install --namespace=argo-cd --create-namespace argo-cd argo/argo-cd
 
-# helm repo add argo https://argoproj.github.io/argo-helm
-# helm repo update
-helm install --namespace=argo-cd --create-namespace argo-cd argo/argo-cd
+    # Wait for ArgoCD to be ready
+    while [[ $(kubectl get deployments argo-cd-argocd-server -n argo-cd -o 'jsonpath={.status.conditions[?(@.type=="Available")].status}') != "True" ]]; do echo "waiting for argocd-server" && sleep 1; done
 
-# Wait for ArgoCD to be ready
-while [[ $(kubectl get deployments argo-cd-argocd-server -n argo-cd -o 'jsonpath={.status.conditions[?(@.type=="Available")].status}') != "True" ]]; do echo "waiting for argocd-server" && sleep 1; done
+    # Change default password to letmein
+    kubectl patch secret -n argo-cd argocd-secret -p '{"stringData": { "admin.password": "'$(htpasswd -bnBC 10 "" letmein | tr -d ':\n')'"}}'
+    kubectl delete secret -n argo-cd argocd-initial-admin-secret
+    
+    # Add github repo to argocd
+    kubectl apply -f ./repo.yaml
+fi
 
-# Change default password to letmein
-kubectl patch secret -n argo-cd argocd-secret -p '{"stringData": { "admin.password": "'$(htpasswd -bnBC 10 "" letmein | tr -d ':\n')'"}}'
-kubectl delete secret -n argo-cd argocd-initial-admin-secret
-
-# Add github repo to argocd
-kubectl apply -f ./repo.yaml
 
 # Port forward to argocd server
 kubectl port-forward svc/argo-cd-argocd-server -n argo-cd 8080:443
