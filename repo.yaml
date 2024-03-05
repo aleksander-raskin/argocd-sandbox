@@ -1,3 +1,4 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -14,4 +15,20 @@ spec:
     namespace: argo-cd
   syncPolicy:
     automated: {}
-
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-secrets
+  namespace: argo-cd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/aleksander-raskin/argocd-sandbox.git
+    targetRevision: HEAD
+    path: external-secrets
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-cd
+  syncPolicy:
+    automated: {}

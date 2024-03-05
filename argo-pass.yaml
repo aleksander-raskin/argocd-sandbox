@@ -1,0 +1,69 @@
+# role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: argo-cd
+  name: secret-manager
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch", "delete", "patch"]
+---
+# rolebinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: secret-manager-binding
+  namespace: argo-cd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: secret-manager
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: argo-cd
+---
+# Change the default admin password
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: argocd-change-admin-password
+  namespace: argo-cd
+spec:
+  template:
+    spec:
+      containers:
+      - name: argocd-change-admin-password
+        image: bitnami/kubectl:latest
+        command: 
+          - "kubectl"
+          - "patch"
+          - "secret"
+          - "-n"
+          - "argo-cd"
+          - "argocd-secret"
+          - "-p"
+          - "{\"stringData\": { \"admin.password\": \"$2y$10$DfhVavJuhkRaS6zIkJUFT.GRTRwOCxgqg2VVe/F1fS3Sw770SqY1K\"}}"
+      restartPolicy: OnFailure
+---
+# Job to delete initial ArgoCD admin secret
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: delete-initial-secret-job
+  namespace: argo-cd
+spec:
+  template:
+    spec:
+      containers:
+      - name: delete-secret
+        image: bitnami/kubectl:latest
+        command:
+          - "kubectl"
+          - "delete"
+          - "secret"
+          - "-n"
+          - "argo-cd"
+          - "argocd-initial-admin-secret"
+      restartPolicy: OnFailure
