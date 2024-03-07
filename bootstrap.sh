@@ -60,9 +60,6 @@ else
     # Wait for ArgoCD to be ready
     while [[ $(kubectl get deployments argo-cd-argocd-server -n argo-cd -o 'jsonpath={.status.conditions[?(@.type=="Available")].status}') != "True" ]]; do echo "waiting for argocd-server" && sleep 3; done
 
-    # Delete initial admin password
-    kubectl apply -f ./argo-pass.yaml
-
     # Add github repo to argocd
     kubectl apply -f ./repo.yaml
 fi

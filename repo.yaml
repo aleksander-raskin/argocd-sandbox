@@ -2,14 +2,14 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: minikube
+  name: monitoring
   namespace: argo-cd
 spec:
   project: default
   source:
     repoURL: https://github.com/aleksander-raskin/argocd-sandbox.git
     targetRevision: HEAD
-    path: argocd
+    path: monitoring
   destination:
     server: https://kubernetes.default.svc
     namespace: argo-cd
