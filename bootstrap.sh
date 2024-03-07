@@ -55,12 +55,12 @@ then
 else
     helm repo add argo https://argoproj.github.io/argo-helm
     helm repo update argo
-    helm install --namespace=argo-cd --create-namespace argo-cd argo/argo-cd
+    helm install --namespace=argo-cd --create-namespace argo-cd argo/argo-cd -f argocd_values.yaml
 
     # Wait for ArgoCD to be ready
     while [[ $(kubectl get deployments argo-cd-argocd-server -n argo-cd -o 'jsonpath={.status.conditions[?(@.type=="Available")].status}') != "True" ]]; do echo "waiting for argocd-server" && sleep 3; done
 
-    # Change default password to letmein
+    # Delete initial admin password
     kubectl apply -f ./argo-pass.yaml
 
     # Add github repo to argocd

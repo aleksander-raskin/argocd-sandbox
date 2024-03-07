@@ -7,7 +7,7 @@ metadata:
 rules:
 - apiGroups: [""]
   resources: ["secrets"]
-  verbs: ["get", "list", "watch", "delete", "patch"]
+  verbs: ["get", "list", "watch", "delete"]
 ---
 # rolebinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -23,29 +23,6 @@ subjects:
 - kind: ServiceAccount
   name: default
   namespace: argo-cd
----
-# Change the default admin password
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: argocd-change-admin-password
-  namespace: argo-cd
-spec:
-  template:
-    spec:
-      containers:
-      - name: argocd-change-admin-password
-        image: bitnami/kubectl:latest
-        command: 
-          - "kubectl"
-          - "patch"
-          - "secret"
-          - "-n"
-          - "argo-cd"
-          - "argocd-secret"
-          - "-p"
-          - "{\"stringData\": { \"admin.password\": \"$2y$10$DfhVavJuhkRaS6zIkJUFT.GRTRwOCxgqg2VVe/F1fS3Sw770SqY1K\"}}"
-      restartPolicy: OnFailure
 ---
 # Job to delete initial ArgoCD admin secret
 apiVersion: batch/v1
